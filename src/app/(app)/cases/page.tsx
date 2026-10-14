@@ -2,7 +2,7 @@ import type { CaseStatus, Prisma } from "@prisma/client";
 import Link from "next/link";
 import { Empty, PageHeader, STATUS_LABELS, StatusBadge } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
-import { formatDate } from "@/lib/dates";
+import { formatDate, istDayStart } from "@/lib/dates";
 import { db } from "@/lib/db";
 import { caseScope } from "@/lib/permissions";
 
@@ -23,13 +23,14 @@ export default async function CasesPage({
       { client: { name: { contains: q, mode: "insensitive" } } },
     ];
   }
-  const now = new Date();
+  // Hearings are stored at midnight IST, so today's hearing counts as upcoming.
+  const today = istDayStart(new Date());
   const cases = await db.case.findMany({
     where,
     include: {
       client: { select: { name: true } },
       advocate: { select: { name: true } },
-      hearings: { where: { date: { gte: now } }, orderBy: { date: "asc" }, take: 1 },
+      hearings: { where: { date: { gte: today } }, orderBy: { date: "asc" }, take: 1 },
     },
     orderBy: { updatedAt: "desc" },
     take: 200,
