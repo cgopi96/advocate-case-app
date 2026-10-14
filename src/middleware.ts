@@ -25,5 +25,6 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  // /api/cron is called by the scheduler and checks its own secret.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/cron/).*)"],
 };

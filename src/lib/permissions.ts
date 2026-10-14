@@ -18,6 +18,10 @@ export const can = {
   createCase: (_a: Actor) => true,
   // Who a case can be assigned to is restricted for advocates in assignableAdvocateId.
   assignCase: (a: Actor) => a.role !== "ADVOCATE",
+  // Advocates can view invoices on their cases but not create or change them.
+  manageBilling: (a: Actor) => a.role !== "ADVOCATE",
+  cancelInvoice: (a: Actor) => a.role === "ADMIN",
+  sendReminders: (a: Actor) => a.role === "ADMIN",
 };
 
 /** Whether the actor may see or work on a case assigned to `advocateId`. */

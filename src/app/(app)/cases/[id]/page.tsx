@@ -6,6 +6,8 @@ import { requireUser } from "@/lib/auth";
 import { getAccessibleCase, listAdvocates } from "@/lib/cases";
 import { formatDate, istDayStart, toDateKey } from "@/lib/dates";
 import { db } from "@/lib/db";
+import { invoiceState, paidAmount } from "@/lib/billing";
+import { formatINR } from "@/lib/money";
 import { can } from "@/lib/permissions";
 import {
   addFollowUp,
@@ -37,6 +39,7 @@ export default async function CasePage({ params }: { params: Promise<{ id: strin
         hearings: { orderBy: { date: "desc" } },
         followUps: { include: { owner: { select: { name: true } } }, orderBy: [{ done: "asc" }, { dueDate: "asc" }] },
         documents: { include: { uploadedBy: { select: { name: true } } }, orderBy: { createdAt: "desc" } },
+        invoices: { include: { payments: { select: { amount: true } } }, orderBy: { issueDate: "desc" } },
       },
     }),
     db.client.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
@@ -65,6 +68,7 @@ export default async function CasePage({ params }: { params: Promise<{ id: strin
           </Link>{" "}
           ({c.client.phone}) · Advocate: {c.advocate?.name ?? "Unassigned"}
           {c.stage && <> · Stage: {c.stage}</>}
+          {c.agreedFee != null && <> · Agreed fee: {formatINR(c.agreedFee)}</>}
         </p>
       </div>
 
@@ -261,6 +265,40 @@ export default async function CasePage({ params }: { params: Promise<{ id: strin
               </Field>
             </ActionForm>
           </details>
+        </section>
+
+        <section className="card lg:col-span-2">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="font-semibold">Invoices</h2>
+            {can.manageBilling(user) && (
+              <Link href={`/billing/new?caseId=${c.id}`} className="text-sm text-indigo-700 hover:underline">
+                New invoice
+              </Link>
+            )}
+          </div>
+          {c.invoices.length === 0 ? (
+            <Empty>No invoices yet.</Empty>
+          ) : (
+            <table className="table">
+              <tbody>
+                {c.invoices.map((inv) => {
+                  const paid = paidAmount(inv.payments);
+                  return (
+                    <tr key={inv.id}>
+                      <td>
+                        <Link href={`/billing/${inv.id}`} className="link">
+                          {inv.number}
+                        </Link>
+                      </td>
+                      <td>{formatDate(inv.issueDate)}</td>
+                      <td className="text-right">{formatINR(inv.total)}</td>
+                      <td>{invoiceState(inv, paid)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
         </section>
 
         <section className="card lg:col-span-2">
