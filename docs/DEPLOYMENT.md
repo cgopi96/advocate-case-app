@@ -1,4 +1,6 @@
-# Deployment
+# Deployment on a VPS
+
+This is the self-managed option. For Zoho Catalyst hosting see [CATALYST.md](CATALYST.md).
 
 One Linux server runs both environments with Docker:
 
@@ -7,7 +9,7 @@ One Linux server runs both environments with Docker:
 | Staging | `/opt/advocate/staging` | 3001 | Every merge to `main` once CI passes |
 | Production | `/opt/advocate/production` | 3000 | You run the **Deploy** workflow and pick `production` |
 
-Caddy sits in front of both and gets HTTPS certificates automatically. Each environment has its own database, uploads volume and nightly backups.
+Caddy sits in front of both and gets HTTPS certificates automatically. Each environment has its own database and nightly backups. Uploaded documents are stored inside the database.
 
 ## 1. Server
 
@@ -91,7 +93,7 @@ To roll back, run **Deploy** for `production` from an earlier commit, or on the 
 
 ## 6. Backups
 
-The `backup` container writes a database dump and an uploads archive every night at 02:00 IST to `/opt/advocate/backups/<env>` and keeps 30 days. **Copy that folder off the server too** (for example a nightly `rclone` to Google Drive or S3), because a backup on the same server is lost with the server.
+The `backup` container writes a database dump (documents included) every night at 02:00 IST to `/opt/advocate/backups/<env>` and keeps 30 days. **Copy that folder off the server too** (for example a nightly `rclone` to Google Drive or S3), because a backup on the same server is lost with the server.
 
 Restore into production:
 
@@ -99,8 +101,6 @@ Restore into production:
 cd /opt/advocate/production/deploy
 docker compose -p advocate-prod stop app
 docker compose -p advocate-prod exec -T db pg_restore -U advocate -d advocate --clean --if-exists < /opt/advocate/backups/production/db_YYYY-MM-DD_0200.dump
-docker run --rm -v advocate-prod_uploads:/data/uploads -v /opt/advocate/backups/production:/b alpine \
-  sh -c 'rm -rf /data/uploads/* && tar -xzf /b/uploads_YYYY-MM-DD_0200.tar.gz -C /data'
 docker compose -p advocate-prod start app
 ```
 

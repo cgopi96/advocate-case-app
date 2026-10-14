@@ -27,8 +27,8 @@ RUN npm init -y >/dev/null \
   && npx prisma generate --schema prisma/schema.prisma
 
 FROM base AS runner
-ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0 UPLOAD_DIR=/data/uploads
-RUN groupadd -r app && useradd -r -g app -d /app app && mkdir -p /data/uploads && chown -R app:app /data
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0
+RUN groupadd -r app && useradd -r -g app -d /app app
 COPY --from=build --chown=app:app /app/.next/standalone ./
 COPY --from=build --chown=app:app /app/.next/static ./.next/static
 COPY --from=build --chown=app:app /app/prisma ./prisma
@@ -37,5 +37,4 @@ COPY --chown=app:app deploy/start.sh ./
 COPY --chown=app:app deploy/create-admin.mjs ./tools/
 USER app
 EXPOSE 3000
-VOLUME ["/data/uploads"]
 CMD ["./start.sh"]

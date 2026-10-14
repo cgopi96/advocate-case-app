@@ -1,0 +1,94 @@
+name: Deploy to Catalyst
+
+# Zoho Catalyst hosting (see docs/CATALYST.md).
+# - Staging = the Catalyst project's Development environment. It updates on
+#   every merge to main once CI passes.
+# - Production = the Catalyst project's Production environment. Run this
+#   workflow by hand and pick "production": it applies database migrations to
+#   the production database, then you press "Deploy to Production" in the
+#   Catalyst console to promote the version already tested on staging.
+# Secrets live in the GitHub environments "staging" and "production":
+#   DATABASE_URL, and in staging also CATALYST_TOKEN, CATALYST_ORG, CATALYST_PROJECT.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Where to deploy
+        type: choice
+        options: [staging, production]
+        default: staging
+
+concurrency:
+  group: catalyst-${{ github.event.inputs.environment || 'staging' }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+    env:
+      TARGET: ${{ github.event.inputs.environment || 'staging' }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      CATALYST_TOKEN: ${{ secrets.CATALYST_TOKEN }}
+      CATALYST_ORG: ${{ secrets.CATALYST_ORG }}
+      CATALYST_PROJECT: ${{ secrets.CATALYST_PROJECT }}
+    steps:
+      - name: Check settings
+        id: check
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "DATABASE_URL not set for $TARGET; skipping."
+            echo "skip=1" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.check.outputs.skip != '1'
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - uses: actions/setup-node@v4
+        if: steps.check.outputs.skip != '1'
+        with:
+          node-version: 22
+          cache: npm
+
+      # The app starts without migrating on Catalyst (it must listen within
+      # 10 seconds), so migrations run here first. They only ever add to the
+      # schema, so the version still running keeps working.
+      - name: Apply database migrations
+        if: steps.check.outputs.skip != '1'
+        run: |
+          npm ci
+          npx prisma migrate deploy
+
+      - name: Build image
+        if: steps.check.outputs.skip != '1' && env.TARGET == 'staging'
+        run: |
+          docker build --platform linux/amd64 -t advocate-app:latest .
+          docker save advocate-app:latest -o advocate-app.tar
+
+      - name: Deploy to Catalyst (Development environment)
+        if: steps.check.outputs.skip != '1' && env.TARGET == 'staging'
+        run: |
+          if [ -z "$CATALYST_TOKEN" ]; then
+            echo "CATALYST_TOKEN not set; skipping the Catalyst deploy."
+            exit 0
+          fi
+          npm install -g zcatalyst-cli
+          catalyst deploy appsail \
+            --name advocate \
+            --source docker-archive://advocate-app.tar \
+            --port 9000 \
+            --project "$CATALYST_PROJECT" --org "$CATALYST_ORG" --token "$CATALYST_TOKEN"
+
+      - name: Next step for production
+        if: steps.check.outputs.skip != '1' && env.TARGET == 'production'
+        run: |
+          echo "Production database is migrated."
+          echo "Now open the Catalyst console and press 'Deploy to Production'"
+          echo "to promote the version running on staging."

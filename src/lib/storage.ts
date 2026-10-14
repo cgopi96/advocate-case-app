@@ -1,11 +1,12 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
-import path from "node:path";
+import { db } from "./db";
 
-// Documents are stored on disk outside the web root and only served through
-// the authenticated /api/documents/[id] route. Swap this module for an
-// S3-compatible store in production without changing callers.
+// Document contents live in the StoredFile table, never in the web root, and
+// are only served through the authenticated /api/documents/[id] route.
+// Keeping them in PostgreSQL means the app has no local disk state, so it runs
+// unchanged on a VPS or on Catalyst AppSail, and one database backup covers
+// the files too.
 
 export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
@@ -17,13 +18,9 @@ export const ALLOWED_TYPES: Record<string, string> = {
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
 };
 
-function root() {
-  return path.resolve(process.env.UPLOAD_DIR ?? "./uploads");
-}
-
-function resolveKey(key: string) {
+function checkKey(key: string) {
   if (!/^[a-f0-9-]+\.[a-z]+$/.test(key)) throw new Error("Invalid storage key");
-  return path.join(root(), key);
+  return key;
 }
 
 /** Check the first bytes so a renamed executable can't pass as a PDF. */
@@ -49,15 +46,16 @@ export async function saveFile(mime: string, bytes: Uint8Array): Promise<string>
   const ext = ALLOWED_TYPES[mime];
   if (!ext) throw new Error("File type not allowed");
   const key = `${randomUUID()}.${ext}`;
-  await mkdir(root(), { recursive: true });
-  await writeFile(resolveKey(key), bytes, { mode: 0o600 });
+  await db.storedFile.create({ data: { key, data: Buffer.from(bytes) } });
   return key;
 }
 
-export async function readStoredFile(key: string) {
-  return readFile(resolveKey(key));
+export async function readStoredFile(key: string): Promise<Uint8Array> {
+  const file = await db.storedFile.findUnique({ where: { key: checkKey(key) } });
+  if (!file) throw new Error("Stored file missing");
+  return file.data;
 }
 
 export async function deleteStoredFile(key: string) {
-  await unlink(resolveKey(key)).catch(() => undefined);
+  await db.storedFile.deleteMany({ where: { key: checkKey(key) } });
 }

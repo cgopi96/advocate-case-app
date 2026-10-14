@@ -159,6 +159,14 @@ model Document {
   uploadedBy User @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
 }
 
+/// Uploaded file contents, kept apart from Document so listing documents
+/// never loads the bytes. One database backup then covers files too.
+model StoredFile {
+  key       String   @id
+  data      Bytes
+  createdAt DateTime @default(now())
+}
+
 model AuditLog {
   id        String   @id @default(cuid())
   userId    String?

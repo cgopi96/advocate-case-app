@@ -65,11 +65,11 @@ npm run build
 
 ## Deployment
 
-See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for the server setup, staging and production, HTTPS, backups and restores.
+Production runs on Zoho Catalyst AppSail with a managed PostgreSQL in Mumbai: see [docs/CATALYST.md](docs/CATALYST.md). The self-managed VPS option is in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ## Making changes after go-live
 
 1. Describe the change in the project; it is made on a branch with a pull request.
 2. CI runs type checks, tests and a build on every pull request.
-3. Merging deploys to staging automatically; check it there, then run the Deploy workflow for production.
+3. Merging deploys to staging automatically; check it there, then run the **Deploy to Catalyst** workflow for production and press Deploy to Production in Catalyst.
 4. Database changes ship as Prisma migrations (`prisma migrate deploy`), which keep existing data.
