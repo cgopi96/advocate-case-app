@@ -1,0 +1,55 @@
+# One environment (production or staging). Run from this folder:
+#   docker compose --env-file ../.env.production -p advocate-prod up -d --build
+#   docker compose --env-file ../.env.staging    -p advocate-staging up -d --build
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: advocate
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: advocate
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U advocate"]
+      interval: 5s
+      retries: 20
+
+  app:
+    build: ..
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: ${APP_ENV_FILE:?set APP_ENV_FILE}
+    environment:
+      DATABASE_URL: postgresql://advocate:${POSTGRES_PASSWORD}@db:5432/advocate
+      UPLOAD_DIR: /data/uploads
+    volumes:
+      - uploads:/data/uploads
+    # Only reachable from the server itself; Caddy serves it over HTTPS.
+    ports:
+      - "127.0.0.1:${APP_PORT:?set APP_PORT}:3000"
+
+  backup:
+    image: postgres:16
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGUSER: advocate
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: advocate
+      KEEP_DAYS: ${BACKUP_KEEP_DAYS:-30}
+    volumes:
+      - ./backup.sh:/backup.sh:ro
+      - uploads:/data/uploads:ro
+      - ${BACKUP_DIR:-./backups}:/backups
+    entrypoint: ["/bin/sh", "/backup.sh"]
+
+volumes:
+  db-data:
+  uploads:

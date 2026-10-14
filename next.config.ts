@@ -10,6 +10,8 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Self-contained server bundle for the Docker image.
+  output: "standalone",
   experimental: {
     serverActions: { bodySizeLimit: "11mb" },
   },

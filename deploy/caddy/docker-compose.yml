@@ -1,0 +1,18 @@
+# Shared HTTPS front door for production and staging.
+#   PROD_DOMAIN=cases.example.com STAGING_DOMAIN=staging.cases.example.com docker compose up -d
+services:
+  caddy:
+    image: caddy:2.10
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      PROD_DOMAIN: ${PROD_DOMAIN:?set PROD_DOMAIN}
+      STAGING_DOMAIN: ${STAGING_DOMAIN:?set STAGING_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  caddy-data:
+  caddy-config:
