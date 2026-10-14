@@ -69,3 +69,20 @@ export async function resetPassword(id: string, _prev: FormState, form: FormData
   await audit(admin.id, "reset_password", "User", id);
   return ok();
 }
+
+const phoneSchema = z
+  .string()
+  .trim()
+  .max(20)
+  .refine((v) => v === "" || /^[0-9+\-\s()]{7,20}$/.test(v), "must be a valid phone number")
+  .transform((v) => v || null);
+
+export async function updatePhone(id: string, _prev: FormState, form: FormData): Promise<FormState> {
+  const admin = await requireRole("ADMIN");
+  const parsed = phoneSchema.safeParse(form.get("phone") ?? "");
+  if (!parsed.success) return { error: `The phone ${parsed.error.issues[0].message}.` };
+  await db.user.update({ where: { id }, data: { phone: parsed.data } });
+  await audit(admin.id, "update_phone", "User", id);
+  revalidatePath("/users");
+  return ok();
+}

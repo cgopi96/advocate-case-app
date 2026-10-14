@@ -27,6 +27,24 @@ enum FollowUpType {
   TASK
 }
 
+enum PaymentMode {
+  CASH
+  UPI
+  BANK_TRANSFER
+  CHEQUE
+  CARD
+}
+
+enum ReminderChannel {
+  EMAIL
+  WHATSAPP
+}
+
+enum ReminderStatus {
+  SENT
+  FAILED
+}
+
 model User {
   id           String    @id @default(cuid())
   name         String
@@ -44,6 +62,9 @@ model User {
   followUps     FollowUp[]
   documents     Document[]
   auditLogs     AuditLog[]
+  invoices      Invoice[]
+  payments      Payment[]
+  reminderLogs  ReminderLog[]
 }
 
 model Client {
@@ -70,6 +91,8 @@ model Case {
   opposingParty String?
   filingDate    DateTime?
   stage         String?
+  /// Agreed professional fee in paise
+  agreedFee     Int?
   status        CaseStatus @default(OPEN)
   clientId      String
   advocateId    String?
@@ -81,6 +104,7 @@ model Case {
   hearings  Hearing[]
   followUps FollowUp[]
   documents Document[]
+  invoices  Invoice[]
 
   @@unique([caseNumber, court])
   @@index([advocateId])
@@ -146,5 +170,71 @@ model AuditLog {
 
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
+  @@index([createdAt])
+}
+
+/// All money amounts are stored in paise (1 rupee = 100 paise).
+model Invoice {
+  id          String    @id @default(cuid())
+  number      String    @unique
+  caseId      String
+  issueDate   DateTime
+  dueDate     DateTime?
+  gstRate     Int
+  subtotal    Int
+  gstAmount   Int
+  total       Int
+  notes       String?
+  cancelled   Boolean   @default(false)
+  createdById String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  case      Case          @relation(fields: [caseId], references: [id], onDelete: Restrict)
+  createdBy User          @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  items     InvoiceItem[]
+  payments  Payment[]
+
+  @@index([issueDate])
+}
+
+model InvoiceItem {
+  id          String @id @default(cuid())
+  invoiceId   String
+  description String
+  amount      Int
+  position    Int
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+
+model Payment {
+  id           String      @id @default(cuid())
+  invoiceId    String
+  date         DateTime
+  amount       Int
+  mode         PaymentMode
+  reference    String?
+  recordedById String
+  createdAt    DateTime    @default(now())
+
+  invoice    Invoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  recordedBy User    @relation(fields: [recordedById], references: [id], onDelete: Restrict)
+}
+
+/// One row per user, channel and day, so a re-run never sends twice.
+model ReminderLog {
+  id        String          @id @default(cuid())
+  userId    String
+  channel   ReminderChannel
+  forDate   String
+  status    ReminderStatus
+  summary   String
+  error     String?
+  createdAt DateTime        @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, channel, forDate])
   @@index([createdAt])
 }

@@ -11,12 +11,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     { href: "/clients", label: "Clients" },
     { href: "/calendar", label: "Calendar" },
     { href: "/follow-ups", label: "Follow-ups" },
+    { href: "/billing", label: "Billing" },
     ...(can.manageUsers(user) ? [{ href: "/users", label: "Users" }] : []),
+    ...(can.sendReminders(user) ? [{ href: "/reminders", label: "Reminders" }] : []),
     ...(can.viewAuditLog(user) ? [{ href: "/audit", label: "Audit log" }] : []),
   ];
   return (
     <div className="min-h-screen">
-      <header className="border-b border-slate-200 bg-white">
+      <header className="border-b border-slate-200 bg-white print:hidden">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
           <Link href="/" className="font-semibold text-indigo-700">
             Case Follow-up
@@ -38,7 +40,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
+      <main className="mx-auto max-w-6xl px-4 py-6 print:max-w-none print:p-0">{children}</main>
     </div>
   );
 }

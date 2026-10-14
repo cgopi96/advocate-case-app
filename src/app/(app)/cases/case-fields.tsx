@@ -2,6 +2,7 @@ import type { Case } from "@prisma/client";
 import { Field, STATUS_LABELS } from "@/components/ui";
 import { CASE_TYPES } from "@/lib/cases";
 import { toDateKey } from "@/lib/dates";
+import { toRupeeInput } from "@/lib/money";
 
 type Option = { id: string; name: string };
 
@@ -64,6 +65,9 @@ export function CaseFields({
       </Field>
       <Field label="Stage">
         <input name="stage" defaultValue={value?.stage ?? ""} placeholder="Evidence, Arguments…" className="input" />
+      </Field>
+      <Field label="Agreed fee (₹)">
+        <input name="agreedFee" inputMode="decimal" defaultValue={toRupeeInput(value?.agreedFee)} className="input" />
       </Field>
       <Field label="Status *">
         <select name="status" defaultValue={value?.status ?? "OPEN"} className="input">

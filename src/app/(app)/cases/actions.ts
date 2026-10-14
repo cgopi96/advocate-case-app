@@ -10,6 +10,7 @@ import { requireUser } from "@/lib/auth";
 import { getAccessibleCase } from "@/lib/cases";
 import { db } from "@/lib/db";
 import { dateField, firstError, formObject, ok, optionalDate, optionalText, requiredText } from "@/lib/forms";
+import { parseRupees } from "@/lib/money";
 import { assignableAdvocateId, can } from "@/lib/permissions";
 import { ALLOWED_TYPES, MAX_UPLOAD_BYTES, deleteStoredFile, saveFile, sniffMatches } from "@/lib/storage";
 
@@ -21,6 +22,18 @@ const caseSchema = z.object({
   opposingParty: optionalText(200),
   filingDate: optionalDate,
   stage: optionalText(100),
+  agreedFee: z
+    .string()
+    .optional()
+    .transform((v, ctx) => {
+      if (!v?.trim()) return null;
+      try {
+        return parseRupees(v);
+      } catch {
+        ctx.addIssue({ code: "custom", message: "must be a number like 25000" });
+        return z.NEVER;
+      }
+    }),
   status: z.enum(["OPEN", "ADJOURNED", "RESERVED", "DISPOSED", "CLOSED"]),
   clientId: z.string().min(1, "must be selected"),
   advocateId: z

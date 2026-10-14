@@ -12,15 +12,17 @@ Built with Next.js 15, PostgreSQL and Prisma. See the [requirements spec](https:
 - **Follow-ups:** calls, meetings and tasks with an owner and due date.
 - **Documents:** PDF, JPG, PNG, DOC and DOCX up to 10 MB per case.
 - **Calendar:** month view of all hearings.
-- **Users and audit log** (admin only).
+- **Reminders:** every morning each staff member gets one email and/or WhatsApp message with tomorrow's hearings on their cases and their follow-ups that are due or overdue.
+- **Billing:** invoices numbered per financial year (INV/2026-27/0001) with optional 18% GST split into CGST and SGST, printable as PDF; payments by cash, UPI, bank transfer, cheque or card; outstanding balance by client.
+- **Users, reminders and audit log** (admin only).
 
 ## Roles
 
 | Role | Can do |
 | --- | --- |
-| Admin | Everything, including users, deletes and the audit log |
-| Advocate | Work on cases assigned to them only |
-| Clerk | Add and update clients, cases, hearings, follow-ups and documents for all cases; cannot delete |
+| Admin | Everything, including users, deletes, cancelling invoices, reminders and the audit log |
+| Advocate | Work on cases assigned to them only; view (not create or change) their invoices |
+| Clerk | Add and update clients, cases, hearings, follow-ups, documents, invoices and payments for all cases; cannot delete |
 
 ## Security
 
@@ -43,6 +45,15 @@ npm run dev
 ```
 
 Open http://localhost:3000 and sign in with the seed admin.
+
+## Reminders setup
+
+1. Set `CRON_SECRET`, and the SMTP and/or WhatsApp variables in `.env` (see `.env.example`).
+2. Add each staff member's mobile number on the Users page for WhatsApp.
+3. Add repository secrets `APP_URL` and `CRON_SECRET` on GitHub. The `Daily reminders` workflow then calls `POST /api/cron/reminders` at 7:00 IST. Any other scheduler that can send that request works too.
+4. Admins can send today's reminders immediately from the Reminders page to test the setup.
+
+WhatsApp business-initiated messages must use a template approved in Meta's WhatsApp Manager. Create one whose body has three placeholders, for example: `Good morning {{1}}. You have {{2}} hearing(s) tomorrow and {{3}} follow-up(s) due. Please check the Case Follow-up app.`
 
 ## Checks
 

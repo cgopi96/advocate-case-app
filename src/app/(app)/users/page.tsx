@@ -3,7 +3,7 @@ import { Field, PageHeader } from "@/components/ui";
 import { requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { ROLE_LABELS } from "@/lib/permissions";
-import { changeRole, createUser, resetPassword, setActive } from "./actions";
+import { changeRole, createUser, resetPassword, setActive, updatePhone } from "./actions";
 
 export default async function UsersPage() {
   const admin = await requireRole("ADMIN");
@@ -34,8 +34,8 @@ export default async function UsersPage() {
               )}
             </div>
             <details className="mt-2">
-              <summary className="cursor-pointer text-sm text-indigo-700">Change role or reset password</summary>
-              <div className="mt-2 grid gap-4 sm:grid-cols-2">
+              <summary className="cursor-pointer text-sm text-indigo-700">Change role, phone or password</summary>
+              <div className="mt-2 grid gap-4 sm:grid-cols-3">
                 <ActionForm action={changeRole.bind(null, u.id)} submitLabel="Change role" className="space-y-2">
                   <Field label="Role">
                     <select name="role" defaultValue={u.role} className="input">
@@ -45,6 +45,11 @@ export default async function UsersPage() {
                         </option>
                       ))}
                     </select>
+                  </Field>
+                </ActionForm>
+                <ActionForm action={updatePhone.bind(null, u.id)} submitLabel="Save phone" className="space-y-2">
+                  <Field label="Mobile (for WhatsApp reminders)">
+                    <input name="phone" defaultValue={u.phone ?? ""} className="input" />
                   </Field>
                 </ActionForm>
                 <ActionForm action={resetPassword.bind(null, u.id)} submitLabel="Reset password" className="space-y-2" resetOnSuccess>
@@ -68,7 +73,7 @@ export default async function UsersPage() {
             <Field label="Email *">
               <input name="email" type="email" required className="input" />
             </Field>
-            <Field label="Phone">
+            <Field label="Mobile (for WhatsApp reminders)">
               <input name="phone" className="input" />
             </Field>
             <Field label="Role *">
