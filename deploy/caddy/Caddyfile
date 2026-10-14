@@ -1,0 +1,14 @@
+# HTTPS certificates are issued automatically by Let's Encrypt.
+{$PROD_DOMAIN} {
+	reverse_proxy 127.0.0.1:3000
+	request_body {
+		max_size 12MB
+	}
+}
+
+{$STAGING_DOMAIN} {
+	reverse_proxy 127.0.0.1:3001
+	request_body {
+		max_size 12MB
+	}
+}

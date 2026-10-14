@@ -63,9 +63,13 @@ npm test
 npm run build
 ```
 
+## Deployment
+
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for the server setup, staging and production, HTTPS, backups and restores.
+
 ## Making changes after go-live
 
 1. Describe the change in the project; it is made on a branch with a pull request.
 2. CI runs type checks, tests and a build on every pull request.
-3. Check it on staging, then merge to deploy to production.
+3. Merging deploys to staging automatically; check it there, then run the Deploy workflow for production.
 4. Database changes ship as Prisma migrations (`prisma migrate deploy`), which keep existing data.
