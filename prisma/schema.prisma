@@ -1,0 +1,150 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  ADVOCATE
+  CLERK
+}
+
+enum CaseStatus {
+  OPEN
+  ADJOURNED
+  RESERVED
+  DISPOSED
+  CLOSED
+}
+
+enum FollowUpType {
+  CALL
+  MEETING
+  TASK
+}
+
+model User {
+  id           String    @id @default(cuid())
+  name         String
+  email        String    @unique
+  phone        String?
+  passwordHash String
+  role         Role
+  active       Boolean   @default(true)
+  failedLogins Int       @default(0)
+  lockedUntil  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  assignedCases Case[]     @relation("AssignedAdvocate")
+  followUps     FollowUp[]
+  documents     Document[]
+  auditLogs     AuditLog[]
+}
+
+model Client {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String
+  email     String?
+  address   String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cases Case[]
+
+  @@index([name])
+}
+
+model Case {
+  id            String     @id @default(cuid())
+  caseNumber    String
+  title         String
+  court         String
+  caseType      String
+  opposingParty String?
+  filingDate    DateTime?
+  stage         String?
+  status        CaseStatus @default(OPEN)
+  clientId      String
+  advocateId    String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  client    Client     @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  advocate  User?      @relation("AssignedAdvocate", fields: [advocateId], references: [id], onDelete: SetNull)
+  hearings  Hearing[]
+  followUps FollowUp[]
+  documents Document[]
+
+  @@unique([caseNumber, court])
+  @@index([advocateId])
+  @@index([status])
+}
+
+model Hearing {
+  id        String    @id @default(cuid())
+  caseId    String
+  date      DateTime
+  purpose   String
+  outcome   String?
+  nextDate  DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([date])
+}
+
+model FollowUp {
+  id        String       @id @default(cuid())
+  caseId    String
+  type      FollowUpType
+  dueDate   DateTime
+  notes     String
+  done      Boolean      @default(false)
+  ownerId   String
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  case  Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+
+  @@index([dueDate, done])
+}
+
+model Document {
+  id           String   @id @default(cuid())
+  caseId       String
+  name         String
+  docType      String
+  storageKey   String   @unique
+  mimeType     String
+  size         Int
+  uploadedById String
+  createdAt    DateTime @default(now())
+
+  case       Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  uploadedBy User @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  details   String?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+}
